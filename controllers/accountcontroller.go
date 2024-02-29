@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"net/http"
-	request_model "project_office_monitoring_backend/data/request"
-	response_model "project_office_monitoring_backend/data/response"
+	req "project_office_monitoring_backend/data/request"
+	resp "project_office_monitoring_backend/data/response"
 	jwthelper "project_office_monitoring_backend/helper"
 	account "project_office_monitoring_backend/models/account"
 	"strconv"
@@ -14,10 +14,10 @@ import (
 )
 
 func SignUpAccount(c *gin.Context) {
-	var accountInput request_model.AccountSignUpRequest
+	var accountInput req.AccountSignUpRequestModel
 	if err := c.ShouldBindJSON(&accountInput); err != nil {
-		c.JSON(http.StatusInternalServerError, response_model.AccountSingUpResponse{
-			Status:  500,
+		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
+			Status:  http.StatusBadRequest,
 			Message: err.Error(),
 			Data:    nil,
 		})
@@ -28,8 +28,8 @@ func SignUpAccount(c *gin.Context) {
 
 	if err := validate.Struct(accountInput); err != nil {
 		// log.Println(fmt.Sprintf("error log2: %s", err))
-		c.JSON(http.StatusInternalServerError, response_model.AccountSingUpResponse{
-			Status:  500,
+		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
+			Status:  http.StatusBadRequest,
 			Message: "Data tidak lengkap",
 			Data:    nil,
 		})
@@ -45,8 +45,8 @@ func SignUpAccount(c *gin.Context) {
 
 	db := c.MustGet("db").(*gorm.DB)
 	if db.Error != nil {
-		c.JSON(http.StatusBadRequest, response_model.AccountSingUpResponse{
-			Status:  400,
+		c.JSON(http.StatusInternalServerError, resp.AccountSignUpResponseModel{
+			Status:  http.StatusInternalServerError,
 			Message: db.Error.Error(),
 			Data:    nil,
 		})
@@ -56,7 +56,7 @@ func SignUpAccount(c *gin.Context) {
 	result := db.FirstOrCreate(&accountResponsePayload, account.AccountUserModel{Email: accountInput.Email})
 
 	if result.Value == nil && result.RowsAffected == 0 {
-		c.JSON(http.StatusBadRequest, response_model.AccountSingUpResponse{
+		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
 			Status:  400,
 			Message: "Record found",
 			Data:    nil,
@@ -64,10 +64,10 @@ func SignUpAccount(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, response_model.AccountSingUpResponse{
-		Status:  201,
+	c.JSON(http.StatusCreated, resp.AccountSignUpResponseModel{
+		Status:  http.StatusCreated,
 		Message: "Account created successfully",
-		Data: &response_model.AccountUserDataResponseModel{
+		Data: &resp.AccountUserDataSignUpModel{
 			UserId: accountResponsePayload.ID,
 			Name:   accountInput.Name,
 			Email:  accountInput.Email,
@@ -78,11 +78,12 @@ func SignUpAccount(c *gin.Context) {
 
 func SignInAccount(c *gin.Context) {
 	var table account.AccountUserModel
-	var dataUser request_model.AccountUserSignInRequest
+	var dataUser req.AccountSignInRequestModel
 	if err := c.ShouldBindJSON(&dataUser); err != nil {
-		c.JSON(http.StatusBadRequest, response_model.AccountUserSignInResponse{
+		c.JSON(http.StatusBadRequest, resp.AccountSignInResponseModel{
 			Status:  http.StatusBadRequest,
 			Message: err.Error(),
+			Data:    nil,
 		})
 		return
 	}
@@ -91,10 +92,10 @@ func SignInAccount(c *gin.Context) {
 	result := db.Where("email = ?", dataUser.Email).Where("password = ?", dataUser.Password).First(&table)
 	// log.Println(fmt.Sprintf("log signin Value: %s", result.Value))
 	if result.Error != nil {
-		c.JSON(http.StatusNotFound, response_model.AccountUserSignInResponse{
-			Status:   http.StatusNotFound,
-			Message:  "Account not match",
-			UserData: nil,
+		c.JSON(http.StatusNotFound, resp.AccountSignInResponseModel{
+			Status:  http.StatusNotFound,
+			Message: "Account not match",
+			Data:    nil,
 		})
 		return
 	}
@@ -102,28 +103,26 @@ func SignInAccount(c *gin.Context) {
 	tokenString, err := jwthelper.GenerateJWTToken(strconv.FormatUint(uint64(table.ID), 10), dataUser.Email)
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, response_model.AccountUserSignInResponse{
-			Status:   http.StatusInternalServerError,
-			Message:  "Failed to generate token",
-			UserData: nil,
+		c.JSON(http.StatusNotFound, resp.AccountSignInResponseModel{
+			Status:  http.StatusInternalServerError,
+			Message: "Failed to generate token",
+			Data:    nil,
 		})
 		return
 	}
 
-	accountSignInResponse := response_model.AccountUserSignInResponse{
+	c.JSON(http.StatusOK, resp.AccountSignInResponseModel{
 		Status:  200,
 		Message: "Account SignIn Successfully",
 		// Typeuser: &dataUser.Typeuser,
-		UserData: &response_model.UserDataModelSignIn{
+		Data: &resp.AccountUserDataSignInModel{
 			ID:    table.ID,
 			Name:  table.Name,
 			Email: dataUser.Email,
 			Phone: table.Phone,
 			Token: tokenString,
 		},
-	}
-
-	c.JSON(http.StatusOK, accountSignInResponse)
+	})
 }
 
 type GetUserDataModel struct {
