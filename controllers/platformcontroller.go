@@ -7,6 +7,7 @@ import (
 	jwthelper "project_office_monitoring_backend/helper"
 	platform "project_office_monitoring_backend/models/platform"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator"
@@ -112,7 +113,7 @@ func InitializePlatform(c *gin.Context) {
 		return
 	}
 
-	platformKey, err := jwthelper.GenerateJWTToken(strconv.FormatUint(uint64(table.ID), 10), reqInitPlatform.PlatformSecret)
+	platformKey, err := jwthelper.GeneratePlatformToken(strconv.FormatUint(uint64(table.ID), 10), reqInitPlatform.PlatformSecret, time.Now().Add(time.Hour*24*365).Unix())
 
 	if err != nil {
 		c.JSON(http.StatusNotFound, resp.InitializePlatformResponseModel{
