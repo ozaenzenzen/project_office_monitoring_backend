@@ -3,6 +3,7 @@ package main
 import (
 	setup "project_office_monitoring_backend/database"
 	account "project_office_monitoring_backend/models/account"
+	platform "project_office_monitoring_backend/models/platform"
 	routes "project_office_monitoring_backend/routes"
 )
 
@@ -12,7 +13,7 @@ func main() {
 
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)
-	db.AutoMigrate(&account.AccountUserModel{})
+	db.AutoMigrate(&account.AccountUserModel{}, &platform.PlatformModel{})
 
 	r := routes.SetupRoutes(db)
 	err := r.Run(":8080")
