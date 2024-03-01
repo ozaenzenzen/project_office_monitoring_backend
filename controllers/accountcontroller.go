@@ -38,6 +38,7 @@ func SignUpAccount(c *gin.Context) {
 	accountResponsePayload := account.AccountUserModel{
 		Name:            accountInput.Name,
 		Email:           accountInput.Email,
+		NoReg:           accountInput.NoReg,
 		Phone:           accountInput.Phone,
 		Password:        accountInput.Password,
 		ConfirmPassword: accountInput.ConfirmPassword,
@@ -57,7 +58,7 @@ func SignUpAccount(c *gin.Context) {
 
 	if result.Value == nil && result.RowsAffected == 0 {
 		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
-			Status:  400,
+			Status:  http.StatusBadRequest,
 			Message: "Record found",
 			Data:    nil,
 		})
@@ -68,10 +69,12 @@ func SignUpAccount(c *gin.Context) {
 		Status:  http.StatusCreated,
 		Message: "Account created successfully",
 		Data: &resp.AccountUserDataSignUpModel{
-			UserId: accountResponsePayload.ID,
-			Name:   accountInput.Name,
-			Email:  accountInput.Email,
-			Phone:  accountInput.Phone,
+			ID:      accountResponsePayload.ID,
+			Name:    accountInput.Name,
+			Email:   accountInput.Email,
+			NoReg:   accountResponsePayload.NoReg,
+			Jabatan: accountResponsePayload.Jabatan,
+			Phone:   accountInput.Phone,
 		},
 	})
 }
@@ -114,29 +117,17 @@ func SignInAccount(c *gin.Context) {
 	c.JSON(http.StatusOK, resp.AccountSignInResponseModel{
 		Status:  200,
 		Message: "Account SignIn Successfully",
-		// Typeuser: &dataUser.Typeuser,
 		Data: &resp.AccountUserDataSignInModel{
-			ID:    table.ID,
-			Name:  table.Name,
-			Email: dataUser.Email,
-			Phone: table.Phone,
-			Token: tokenString,
+			ID:       table.ID,
+			Name:     table.Name,
+			Email:    dataUser.Email,
+			NoReg:    table.NoReg,
+			Jabatan:  table.Jabatan,
+			Phone:    table.Phone,
+			Typeuser: table.Typeuser,
+			Token:    tokenString,
 		},
 	})
-}
-
-type GetUserDataModel struct {
-	ID             uint   `json:"id" gorm:"primary_key"`
-	Name           string `json:"name"`
-	Email          string `json:"email"`
-	Phone          string `json:"phone"`
-	ProfilePicture string `json:"profile_picture"`
-}
-
-type AccountUserGetUserResponse struct {
-	Status   int               `json:"status"`
-	Message  string            `json:"message"`
-	UserData *GetUserDataModel `json:"userdata"`
 }
 
 func GetUserData(c *gin.Context) {
@@ -144,20 +135,21 @@ func GetUserData(c *gin.Context) {
 	headertoken := c.Request.Header.Get("token")
 
 	if headertoken == "" {
-		c.JSON(http.StatusBadRequest, AccountUserGetUserResponse{
-			Status:  400,
+		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+			Status:  http.StatusBadRequest,
 			Message: "token empty",
+			Data:    nil,
 		})
 		return
 	}
 	isValid, err := jwthelper.VerifyToken(headertoken)
 
-	if isValid == true {
+	if isValid {
 		if err != nil {
-			c.JSON(http.StatusBadRequest, AccountUserGetUserResponse{
-				Status:   http.StatusBadRequest,
-				Message:  err.Error(),
-				UserData: nil,
+			c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+				Status:  http.StatusBadRequest,
+				Message: err.Error(),
+				Data:    nil,
 			})
 			return
 		}
@@ -167,10 +159,10 @@ func GetUserData(c *gin.Context) {
 		tokenRaw, err := jwthelper.DecodeJWTToken(headertoken)
 		// fmt.Printf("\ntoken raw %v", tokenRaw)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, AccountUserGetUserResponse{
-				Status:   http.StatusBadRequest,
-				Message:  err.Error(),
-				UserData: nil,
+			c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+				Status:  http.StatusBadRequest,
+				Message: err.Error(),
+				Data:    nil,
 			})
 			return
 		}
@@ -179,45 +171,37 @@ func GetUserData(c *gin.Context) {
 
 		// if err := db.Where("id = ?", c.Param("id")).First(&userData).Error; err != nil {
 		if err := db.Where("email = ?", emails).First(&userData).Error; err != nil {
-			c.JSON(http.StatusBadRequest, AccountUserGetUserResponse{
-				Status:   400,
-				Message:  "User Data Not Found",
-				UserData: nil,
+			c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+				Status:  http.StatusBadRequest,
+				Message: "User Data Not Found",
+				Data:    nil,
 			})
 			return
 		}
 
-		c.JSON(http.StatusOK, AccountUserGetUserResponse{
+		c.JSON(http.StatusOK, resp.GetUserDataResponseModel{
 			Status:  200,
 			Message: "get user data success",
-			UserData: &GetUserDataModel{
+			Data: &resp.GetUserDataModel{
 				ID:             userData.ID,
 				Name:           userData.Name,
 				Email:          userData.Email,
+				NoReg:          userData.NoReg,
+				Jabatan:        userData.Jabatan,
 				Phone:          userData.Phone,
 				ProfilePicture: userData.ProfilePicture,
 			},
 		})
 		return
 	} else {
-		c.JSON(http.StatusBadRequest, AccountUserGetUserResponse{
-			Status:   http.StatusBadRequest,
-			Message:  "invalid token",
-			UserData: nil,
+		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+			Status:  http.StatusBadRequest,
+			Message: "invalid token",
+			Data:    nil,
 		})
 		return
 	}
 
-}
-
-type EditProfileRequest struct {
-	ProfilePicture string `json:"profile_picture"`
-	Name           string `json:"name"`
-}
-
-type EditProfileResponse struct {
-	Status  int    `json:"status"`
-	Message string `json:"message"`
 }
 
 func checkIDHelper(c *gin.Context, db *gorm.DB, ids string, out interface{}) error {
@@ -245,26 +229,26 @@ func EditProfile(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	headertoken := c.Request.Header.Get("token")
 	if headertoken == "" {
-		c.JSON(http.StatusBadRequest, EditProfileResponse{
-			Status:  400,
+		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+			Status:  http.StatusBadRequest,
 			Message: "token empty",
 		})
 		return
 	}
 	isValid, err := jwthelper.VerifyToken(headertoken)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, EditProfileResponse{
+		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 			Status:  http.StatusBadRequest,
 			Message: err.Error(),
 		})
 		return
 	}
 
-	if isValid == true {
-		var editProfileRequest EditProfileRequest
+	if isValid {
+		var editProfileRequest req.EditProfileRequestModel
 		if err := c.ShouldBindJSON(&editProfileRequest); err != nil {
-			c.JSON(http.StatusBadRequest, EditProfileResponse{
-				Status:  500,
+			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+				Status:  http.StatusBadRequest,
 				Message: err.Error(),
 			})
 			return
@@ -272,7 +256,7 @@ func EditProfile(c *gin.Context) {
 		tokenRaw, err := jwthelper.DecodeJWTToken(headertoken)
 		// fmt.Printf("\ntoken raw %v", tokenRaw)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, EditProfileResponse{
+			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 				Status:  http.StatusBadRequest,
 				Message: err.Error(),
 			})
@@ -286,7 +270,7 @@ func EditProfile(c *gin.Context) {
 		iduint64, err := strconv.ParseUint(ids, 10, 32)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, EditProfileResponse{
+			c.JSON(http.StatusInternalServerError, resp.EditProfileResponseModel{
 				Status:  500,
 				Message: "error parsing",
 			})
@@ -299,8 +283,8 @@ func EditProfile(c *gin.Context) {
 		})
 
 		if checkID.Error != nil {
-			c.JSON(http.StatusBadRequest, EditProfileResponse{
-				Status:  400,
+			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+				Status:  http.StatusBadRequest,
 				Message: checkID.Error.Error(),
 			})
 			return
@@ -309,8 +293,8 @@ func EditProfile(c *gin.Context) {
 		//--------check id--------check id--------check id--------
 
 		if db.Error != nil {
-			c.JSON(http.StatusBadRequest, EditProfileResponse{
-				Status:  400,
+			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+				Status:  http.StatusBadRequest,
 				Message: db.Error.Error(),
 			})
 			return
@@ -319,22 +303,21 @@ func EditProfile(c *gin.Context) {
 		result := db.Table("account_user_models").Where("id = ?", ids).Update(&editProfileRequest)
 
 		if result.Error != nil {
-			c.JSON(http.StatusBadRequest, EditProfileResponse{
-				Status:  400,
+			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+				Status:  http.StatusBadRequest,
 				Message: result.Error.Error(),
 			})
 			return
 		}
 
-		editProfileResponse := EditProfileResponse{
+		c.JSON(http.StatusOK, resp.EditProfileResponseModel{
 			Status:  http.StatusAccepted,
 			Message: "Edit profile success",
-		}
-
-		c.JSON(http.StatusOK, editProfileResponse)
+		})
+		return
 
 	} else {
-		c.JSON(http.StatusBadRequest, EditProfileResponse{
+		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 			Status:  http.StatusBadRequest,
 			Message: "invalid token",
 		})

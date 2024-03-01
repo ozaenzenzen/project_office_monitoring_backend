@@ -7,9 +7,12 @@ type AccountSignInResponseModel struct {
 }
 
 type AccountUserDataSignInModel struct {
-	ID    uint   `json:"id" gorm:"primary_key"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Phone string `json:"phone"`
-	Token string `json:"token"`
+	ID       uint   `json:"id" gorm:"primary_key"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	NoReg    string `json:"noreg"`
+	Jabatan  string `json:"jabatan"`
+	Phone    string `json:"phone"`
+	Typeuser uint   `json:"typeuser"`
+	Token    string `json:"token"`
 }
