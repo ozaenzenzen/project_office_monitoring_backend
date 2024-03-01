@@ -204,26 +204,26 @@ func GetUserData(c *gin.Context) {
 
 }
 
-func checkIDHelper(c *gin.Context, db *gorm.DB, ids string, out interface{}) error {
-	//--------check id--------check id--------check id--------
-	iduint64, err := strconv.ParseUint(ids, 10, 32)
+// func checkIDHelper(c *gin.Context, db *gorm.DB, ids string, out interface{}) error {
+// 	//--------check id--------check id--------check id--------
+// 	iduint64, err := strconv.ParseUint(ids, 10, 32)
 
-	if err != nil {
-		return err
-	}
-	iduint := uint(iduint64)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	iduint := uint(iduint64)
 
-	checkID := db.Table("account_user_models").Where("id = ?", ids).Find(&account.AccountUserModel{
-		ID: iduint,
-	})
+// 	checkID := db.Table("account_user_models").Where("id = ?", ids).Find(&account.AccountUserModel{
+// 		ID: iduint,
+// 	})
 
-	if checkID.Error != nil {
+// 	if checkID.Error != nil {
 
-		return checkID.Error
-	}
-	//--------check id--------check id--------check id--------
-	return nil
-}
+// 		return checkID.Error
+// 	}
+// 	//--------check id--------check id--------check id--------
+// 	return nil
+// }
 
 func EditProfile(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
