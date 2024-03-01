@@ -12,6 +12,22 @@ import (
 
 var key string = "ozaenzenzen"
 
+func GeneratePlatformToken(uid string, email string, expiresTime int64) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"uid":   uid,
+		"email": email,
+		// "exp":   time.Now().Add(time.Hour * 168).Unix(), // Token expires in 168 hour or 1 week
+		"exp": expiresTime,
+	})
+
+	tokenString, err := token.SignedString([]byte(key))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
 func GenerateJWTToken(uid string, email string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"uid":   uid,
@@ -120,7 +136,7 @@ func GetDataTokenJWT(headertoken string, isEmail bool) string {
 	emails := tokenRaw["email"].(string)
 	uid := tokenRaw["uid"].(string)
 
-	if isEmail == true {
+	if isEmail {
 		return emails
 	} else {
 		return uid

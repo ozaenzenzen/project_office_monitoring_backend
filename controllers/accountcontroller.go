@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"net/http"
-	req "project_office_monitoring_backend/data/request"
-	resp "project_office_monitoring_backend/data/response"
+	req "project_office_monitoring_backend/data/account/request"
+	resp "project_office_monitoring_backend/data/account/response"
 	jwthelper "project_office_monitoring_backend/helper"
 	account "project_office_monitoring_backend/models/account"
 	"strconv"
