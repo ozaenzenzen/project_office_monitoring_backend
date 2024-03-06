@@ -35,48 +35,76 @@ func SignUpAccount(c *gin.Context) {
 		})
 		return
 	}
-	accountResponsePayload := account.AccountUserModel{
-		Name:            accountInput.Name,
-		Email:           accountInput.Email,
-		NoReg:           accountInput.NoReg,
-		Phone:           accountInput.Phone,
-		Password:        accountInput.Password,
-		ConfirmPassword: accountInput.ConfirmPassword,
-	}
-
-	db := c.MustGet("db").(*gorm.DB)
-	if db.Error != nil {
-		c.JSON(http.StatusInternalServerError, resp.AccountSignUpResponseModel{
-			Status:  http.StatusInternalServerError,
-			Message: db.Error.Error(),
-			Data:    nil,
-		})
-		return
-	}
-
-	result := db.FirstOrCreate(&accountResponsePayload, account.AccountUserModel{Email: accountInput.Email})
-
-	if result.Value == nil && result.RowsAffected == 0 {
-		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
+	header_platformkey := c.Request.Header.Get("platformkey")
+	if header_platformkey == "" {
+		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
 			Status:  http.StatusBadRequest,
-			Message: "Record found",
+			Message: "invalid platformkey",
+			Data:    nil,
+		})
+		return
+	}
+	isValid, err := jwthelper.VerifyPlatformToken(header_platformkey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if isValid {
+		accountResponsePayload := account.AccountUserModel{
+			Name:            accountInput.Name,
+			Email:           accountInput.Email,
+			NoReg:           accountInput.NoReg,
+			Phone:           accountInput.Phone,
+			Password:        accountInput.Password,
+			ConfirmPassword: accountInput.ConfirmPassword,
+		}
+
+		db := c.MustGet("db").(*gorm.DB)
+		if db.Error != nil {
+			c.JSON(http.StatusInternalServerError, resp.AccountSignUpResponseModel{
+				Status:  http.StatusInternalServerError,
+				Message: db.Error.Error(),
+				Data:    nil,
+			})
+			return
+		}
+
+		result := db.FirstOrCreate(&accountResponsePayload, account.AccountUserModel{Email: accountInput.Email})
+
+		if result.Value == nil && result.RowsAffected == 0 {
+			c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
+				Status:  http.StatusBadRequest,
+				Message: "Record found",
+				Data:    nil,
+			})
+			return
+		}
+
+		c.JSON(http.StatusCreated, resp.AccountSignUpResponseModel{
+			Status:  http.StatusCreated,
+			Message: "Account created successfully",
+			Data: &resp.AccountUserDataSignUpModel{
+				ID:      accountResponsePayload.ID,
+				Name:    accountInput.Name,
+				Email:   accountInput.Email,
+				NoReg:   accountResponsePayload.NoReg,
+				Jabatan: accountResponsePayload.Jabatan,
+				Phone:   accountInput.Phone,
+			},
+		})
+	} else {
+		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+			Status:  http.StatusBadRequest,
+			Message: "invalid platformkey",
 			Data:    nil,
 		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, resp.AccountSignUpResponseModel{
-		Status:  http.StatusCreated,
-		Message: "Account created successfully",
-		Data: &resp.AccountUserDataSignUpModel{
-			ID:      accountResponsePayload.ID,
-			Name:    accountInput.Name,
-			Email:   accountInput.Email,
-			NoReg:   accountResponsePayload.NoReg,
-			Jabatan: accountResponsePayload.Jabatan,
-			Phone:   accountInput.Phone,
-		},
-	})
 }
 
 func SignInAccount(c *gin.Context) {
