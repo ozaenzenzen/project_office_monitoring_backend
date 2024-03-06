@@ -38,9 +38,11 @@ func CreatePlatform(c *gin.Context) {
 	}
 
 	stampToken := uuid.New().String()
+	stampTokenPN := uuid.New().String()
+	stampTokenPS := uuid.New().String()
 
-	platformName := reqCreatePlatform.CompanyName + stampToken
-	platformSecret := reqCreatePlatform.CompanyName + reqCreatePlatform.CompanyEmail + stampToken
+	platformName := reqCreatePlatform.CompanyName + stampTokenPN
+	platformSecret := reqCreatePlatform.CompanyName + reqCreatePlatform.CompanyEmail + stampTokenPS
 
 	hashPw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.Password)), 10)
 	hashCpw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.ConfirmPassword)), 10)
@@ -66,7 +68,7 @@ func CreatePlatform(c *gin.Context) {
 		return
 	}
 
-	result := db.FirstOrCreate(&dataHandler, platform.PlatformModel{PlatformName: platformName, PlatformSecret: platformSecret})
+	result := db.FirstOrCreate(&dataHandler, platform.PlatformModel{CompanyNoReg: stampToken})
 
 	if result.Value == nil && result.RowsAffected == 0 {
 		c.JSON(http.StatusBadRequest, resp.CreatePlatformResponseModel{
@@ -106,7 +108,7 @@ func InitializePlatform(c *gin.Context) {
 	var table platform.PlatformModel
 	db := c.MustGet("db").(*gorm.DB)
 
-	result := db.Where("platform_name = ?", reqInitPlatform.PlatformName).Where("platform_secret = ?", reqInitPlatform.PlatformName).First(&table)
+	result := db.Where("platform_name = ?", reqInitPlatform.PlatformName).Where("platform_secret = ?", reqInitPlatform.PlatformSecret).First(&table)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, resp.InitializePlatformResponseModel{
 			Status:  http.StatusNotFound,
