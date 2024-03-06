@@ -118,7 +118,8 @@ func InitializePlatform(c *gin.Context) {
 		return
 	}
 
-	platformKey, err := helper.GeneratePlatformToken(strconv.FormatUint(uint64(table.ID), 10), reqInitPlatform.PlatformSecret, time.Now().Add(time.Hour*24*365).Unix())
+	// platformKey, err := helper.GeneratePlatformToken(strconv.FormatUint(uint64(table.ID), 10), reqInitPlatform.PlatformSecret, time.Now().Add(time.Hour*24*365).Unix())
+	platformKey, err := helper.GeneratePlatformToken(strconv.FormatUint(uint64(table.ID), 10), reqInitPlatform.PlatformSecret, time.Now().Add(time.Minute*10).Unix())
 
 	if err != nil {
 		c.JSON(http.StatusNotFound, resp.InitializePlatformResponseModel{
