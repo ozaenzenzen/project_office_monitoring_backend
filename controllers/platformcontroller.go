@@ -4,7 +4,7 @@ import (
 	"net/http"
 	req "project_office_monitoring_backend/data/platform/request"
 	resp "project_office_monitoring_backend/data/platform/response"
-	jwthelper "project_office_monitoring_backend/helper"
+	helper "project_office_monitoring_backend/helper"
 	platform "project_office_monitoring_backend/models/platform"
 	"strconv"
 	"time"
@@ -42,13 +42,16 @@ func CreatePlatform(c *gin.Context) {
 	platformName := reqCreatePlatform.CompanyName + stampToken
 	platformSecret := reqCreatePlatform.CompanyName + reqCreatePlatform.CompanyEmail + stampToken
 
+	hashPw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.Password)), 10)
+	hashCpw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.ConfirmPassword)), 10)
+
 	dataHandler := platform.PlatformModel{
 		CompanyName:     reqCreatePlatform.CompanyName,
 		CompanyEmail:    reqCreatePlatform.CompanyEmail,
-		CompanyNoReg:    reqCreatePlatform.CompanyNoReg,
+		CompanyNoReg:    stampToken,
 		CompanyPhone:    reqCreatePlatform.CompanyPhone,
-		Password:        reqCreatePlatform.Password,
-		ConfirmPassword: reqCreatePlatform.ConfirmPassword,
+		Password:        hashPw,
+		ConfirmPassword: hashCpw,
 		PlatformName:    platformName,
 		PlatformSecret:  platformSecret,
 	}
@@ -113,7 +116,7 @@ func InitializePlatform(c *gin.Context) {
 		return
 	}
 
-	platformKey, err := jwthelper.GeneratePlatformToken(strconv.FormatUint(uint64(table.ID), 10), reqInitPlatform.PlatformSecret, time.Now().Add(time.Hour*24*365).Unix())
+	platformKey, err := helper.GeneratePlatformToken(strconv.FormatUint(uint64(table.ID), 10), reqInitPlatform.PlatformSecret, time.Now().Add(time.Hour*24*365).Unix())
 
 	if err != nil {
 		c.JSON(http.StatusNotFound, resp.InitializePlatformResponseModel{
