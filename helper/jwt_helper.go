@@ -28,6 +28,28 @@ func GeneratePlatformToken(uid string, email string, expiresTime int64) (string,
 	return tokenString, nil
 }
 
+func VerifyPlatformToken(tokenString string) (bool, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Verify the signing algorithm is HMAC with SHA-256
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		// Provide the secret key used for signing the token
+		return []byte(key), nil
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func GenerateJWTToken(uid string, email string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"uid":   uid,
