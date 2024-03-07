@@ -217,71 +217,98 @@ func SignInAccount(c *gin.Context) {
 
 func GetUserData(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
-	headertoken := c.Request.Header.Get("token")
-
-	if headertoken == "" {
+	header_platformkey := c.Request.Header.Get("platformkey")
+	if header_platformkey == "" {
 		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
 			Status:  http.StatusBadRequest,
-			Message: "token empty",
+			Message: "invalid credential",
 			Data:    nil,
 		})
 		return
 	}
-	isValid, err := helper.VerifyToken(headertoken)
 
-	if isValid {
-		if err != nil {
-			c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
-				Status:  http.StatusBadRequest,
-				Message: err.Error(),
-				Data:    nil,
-			})
-			return
-		}
-
-		var userData account.AccountUserModel
-
-		tokenRaw, err := helper.DecodeJWTToken(headertoken)
-		// fmt.Printf("\ntoken raw %v", tokenRaw)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
-				Status:  http.StatusBadRequest,
-				Message: err.Error(),
-				Data:    nil,
-			})
-			return
-		}
-
-		emails := tokenRaw["email"].(string)
-
-		// if err := db.Where("id = ?", c.Param("id")).First(&userData).Error; err != nil {
-		if err := db.Where("email = ?", emails).First(&userData).Error; err != nil {
-			c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
-				Status:  http.StatusBadRequest,
-				Message: "User Data Not Found",
-				Data:    nil,
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, resp.GetUserDataResponseModel{
-			Status:  200,
-			Message: "get user data success",
-			Data: &resp.GetUserDataModel{
-				ID:             userData.ID,
-				Name:           userData.Name,
-				Email:          userData.Email,
-				NoReg:          userData.NoReg,
-				Jabatan:        userData.Jabatan,
-				Phone:          userData.Phone,
-				ProfilePicture: userData.ProfilePicture,
-			},
+	isValidPlatformKey, err := helper.VerifyPlatformToken(header_platformkey)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
 		})
 		return
+	}
+
+	if isValidPlatformKey {
+		headertoken := c.Request.Header.Get("token")
+		if headertoken == "" {
+			c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+				Status:  http.StatusBadRequest,
+				Message: "invalid credential",
+				Data:    nil,
+			})
+			return
+		}
+
+		isValid, err := helper.VerifyToken(headertoken)
+		if isValid {
+			if err != nil {
+				c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+					Status:  http.StatusBadRequest,
+					Message: err.Error(),
+					Data:    nil,
+				})
+				return
+			}
+
+			var userData account.AccountUserModel
+
+			tokenRaw, err := helper.DecodeJWTToken(headertoken)
+			// fmt.Printf("\ntoken raw %v", tokenRaw)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+					Status:  http.StatusBadRequest,
+					Message: err.Error(),
+					Data:    nil,
+				})
+				return
+			}
+
+			emails := tokenRaw["email"].(string)
+
+			// if err := db.Where("id = ?", c.Param("id")).First(&userData).Error; err != nil {
+			if err := db.Where("email = ?", emails).First(&userData).Error; err != nil {
+				c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+					Status:  http.StatusBadRequest,
+					Message: "User Data Not Found",
+					Data:    nil,
+				})
+				return
+			}
+
+			c.JSON(http.StatusOK, resp.GetUserDataResponseModel{
+				Status:  200,
+				Message: "get user data success",
+				Data: &resp.GetUserDataModel{
+					ID:             userData.ID,
+					Name:           userData.Name,
+					Email:          userData.Email,
+					NoReg:          userData.NoReg,
+					Jabatan:        userData.Jabatan,
+					Phone:          userData.Phone,
+					ProfilePicture: userData.ProfilePicture,
+				},
+			})
+			return
+		} else {
+			c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+				Status:  http.StatusBadRequest,
+				Message: "invalid credential",
+				Data:    nil,
+			})
+			return
+		}
 	} else {
 		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
 			Status:  http.StatusBadRequest,
-			Message: "invalid token",
+			Message: "invalid credential",
 			Data:    nil,
 		})
 		return
