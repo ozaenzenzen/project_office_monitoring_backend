@@ -4,7 +4,7 @@ import (
 	"net/http"
 	req "project_office_monitoring_backend/data/account/request"
 	resp "project_office_monitoring_backend/data/account/response"
-	jwthelper "project_office_monitoring_backend/helper"
+	helper "project_office_monitoring_backend/helper"
 	account "project_office_monitoring_backend/models/account"
 	"strconv"
 
@@ -25,7 +25,6 @@ func SignUpAccount(c *gin.Context) {
 	}
 
 	validate := validator.New()
-
 	if err := validate.Struct(accountInput); err != nil {
 		// log.Println(fmt.Sprintf("error log2: %s", err))
 		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
@@ -35,18 +34,20 @@ func SignUpAccount(c *gin.Context) {
 		})
 		return
 	}
+
 	header_platformkey := c.Request.Header.Get("platformkey")
 	if header_platformkey == "" {
-		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
 			Status:  http.StatusBadRequest,
 			Message: "invalid platformkey",
 			Data:    nil,
 		})
 		return
 	}
-	isValid, err := jwthelper.VerifyPlatformToken(header_platformkey)
+
+	isValid, err := helper.VerifyPlatformToken(header_platformkey)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
 			Status:  http.StatusBadRequest,
 			Message: err.Error(),
 		})
@@ -54,13 +55,31 @@ func SignUpAccount(c *gin.Context) {
 	}
 
 	if isValid {
+		hashPw, errPw := helper.HashPassword(accountInput.Password)
+		if errPw != nil {
+			c.JSON(http.StatusInternalServerError, resp.AccountSignUpResponseModel{
+				Status:  http.StatusInternalServerError,
+				Message: err.Error(),
+			})
+			return
+		}
+
+		hashCpw, errCpw := helper.HashPassword(accountInput.ConfirmPassword)
+		if errCpw != nil {
+			c.JSON(http.StatusInternalServerError, resp.AccountSignUpResponseModel{
+				Status:  http.StatusInternalServerError,
+				Message: err.Error(),
+			})
+			return
+		}
+
 		accountResponsePayload := account.AccountUserModel{
 			Name:            accountInput.Name,
 			Email:           accountInput.Email,
 			NoReg:           accountInput.NoReg,
 			Phone:           accountInput.Phone,
-			Password:        accountInput.Password,
-			ConfirmPassword: accountInput.ConfirmPassword,
+			Password:        hashPw,
+			ConfirmPassword: hashCpw,
 		}
 
 		db := c.MustGet("db").(*gorm.DB)
@@ -97,7 +116,7 @@ func SignUpAccount(c *gin.Context) {
 			},
 		})
 	} else {
-		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
 			Status:  http.StatusBadRequest,
 			Message: "invalid platformkey",
 			Data:    nil,
@@ -118,44 +137,82 @@ func SignInAccount(c *gin.Context) {
 		})
 		return
 	}
-	db := c.MustGet("db").(*gorm.DB)
-
-	result := db.Where("email = ?", dataUser.Email).Where("password = ?", dataUser.Password).First(&table)
-	// log.Println(fmt.Sprintf("log signin Value: %s", result.Value))
-	if result.Error != nil {
-		c.JSON(http.StatusNotFound, resp.AccountSignInResponseModel{
-			Status:  http.StatusNotFound,
-			Message: "Account not match",
+	header_platformkey := c.Request.Header.Get("platformkey")
+	if header_platformkey == "" {
+		c.JSON(http.StatusBadRequest, resp.AccountSignInResponseModel{
+			Status:  http.StatusBadRequest,
+			Message: "invalid platformkey",
 			Data:    nil,
 		})
 		return
 	}
 
-	tokenString, err := jwthelper.GenerateJWTToken(strconv.FormatUint(uint64(table.ID), 10), dataUser.Email)
-
+	isValid, err := helper.VerifyPlatformToken(header_platformkey)
 	if err != nil {
-		c.JSON(http.StatusNotFound, resp.AccountSignInResponseModel{
-			Status:  http.StatusInternalServerError,
-			Message: "Failed to generate token",
+		c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	if isValid {
+		db := c.MustGet("db").(*gorm.DB)
+
+		result := db.Where("email = ?", dataUser.Email).First(&table)
+
+		if result.Error != nil {
+			c.JSON(http.StatusUnauthorized, resp.AccountSignInResponseModel{
+				Status:  http.StatusUnauthorized,
+				Message: "Invalid user email or password",
+				Data:    nil,
+			})
+			return
+		}
+
+		checkHashPw := helper.CheckPasswordHash(dataUser.Password, table.Password)
+		if !checkHashPw {
+			c.JSON(http.StatusUnauthorized, resp.AccountSignInResponseModel{
+				Status:  http.StatusUnauthorized,
+				Message: "Invalid user email or password",
+			})
+			return
+		}
+
+		tokenString, err := helper.GenerateJWTToken(strconv.FormatUint(uint64(table.ID), 10), dataUser.Email)
+
+		if err != nil {
+			c.JSON(http.StatusNotFound, resp.AccountSignInResponseModel{
+				Status:  http.StatusInternalServerError,
+				Message: "Failed to generate token",
+				Data:    nil,
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, resp.AccountSignInResponseModel{
+			Status:  200,
+			Message: "Account SignIn Successfully",
+			Data: &resp.AccountUserDataSignInModel{
+				ID:       table.ID,
+				Name:     table.Name,
+				Email:    dataUser.Email,
+				NoReg:    table.NoReg,
+				Jabatan:  table.Jabatan,
+				Phone:    table.Phone,
+				Typeuser: table.Typeuser,
+				Token:    tokenString,
+			},
+		})
+	} else {
+		c.JSON(http.StatusBadRequest, resp.AccountSignInResponseModel{
+			Status:  http.StatusBadRequest,
+			Message: "invalid platformkey",
 			Data:    nil,
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, resp.AccountSignInResponseModel{
-		Status:  200,
-		Message: "Account SignIn Successfully",
-		Data: &resp.AccountUserDataSignInModel{
-			ID:       table.ID,
-			Name:     table.Name,
-			Email:    dataUser.Email,
-			NoReg:    table.NoReg,
-			Jabatan:  table.Jabatan,
-			Phone:    table.Phone,
-			Typeuser: table.Typeuser,
-			Token:    tokenString,
-		},
-	})
 }
 
 func GetUserData(c *gin.Context) {
@@ -170,7 +227,7 @@ func GetUserData(c *gin.Context) {
 		})
 		return
 	}
-	isValid, err := jwthelper.VerifyToken(headertoken)
+	isValid, err := helper.VerifyToken(headertoken)
 
 	if isValid {
 		if err != nil {
@@ -184,7 +241,7 @@ func GetUserData(c *gin.Context) {
 
 		var userData account.AccountUserModel
 
-		tokenRaw, err := jwthelper.DecodeJWTToken(headertoken)
+		tokenRaw, err := helper.DecodeJWTToken(headertoken)
 		// fmt.Printf("\ntoken raw %v", tokenRaw)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
@@ -263,7 +320,7 @@ func EditProfile(c *gin.Context) {
 		})
 		return
 	}
-	isValid, err := jwthelper.VerifyToken(headertoken)
+	isValid, err := helper.VerifyToken(headertoken)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 			Status:  http.StatusBadRequest,
@@ -281,7 +338,7 @@ func EditProfile(c *gin.Context) {
 			})
 			return
 		}
-		tokenRaw, err := jwthelper.DecodeJWTToken(headertoken)
+		tokenRaw, err := helper.DecodeJWTToken(headertoken)
 		// fmt.Printf("\ntoken raw %v", tokenRaw)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
