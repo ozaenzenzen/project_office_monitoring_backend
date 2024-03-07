@@ -342,10 +342,9 @@ func EditProfile(c *gin.Context) {
 
 	header_platformkey := c.Request.Header.Get("platformkey")
 	if header_platformkey == "" {
-		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
+		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 			Status:  http.StatusBadRequest,
 			Message: "invalid credential",
-			Data:    nil,
 		})
 		return
 	}
@@ -390,25 +389,14 @@ func EditProfile(c *gin.Context) {
 			validate := validator.New()
 			if err := validate.Struct(editProfileRequest); err != nil {
 				// log.Println(fmt.Sprintf("error log2: %s", err))
-				c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
+				c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 					Status:  http.StatusBadRequest,
 					Message: "Data tidak lengkap",
-					Data:    nil,
 				})
 				return
 			}
-			// if editProfileRequest.Name == "" || editProfileRequest.ProfilePicture == "" {
-			// if editProfileRequest.Name == "" {
-			// if editProfileRequest == nil {
-			// 	c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
-			// 		Status:  http.StatusBadRequest,
-			// 		Message: err.Error(),
-			// 	})
-			// 	return
-			// }
 
 			tokenRaw, err := helper.DecodeJWTToken(headertoken)
-			// fmt.Printf("\ntoken raw %v", tokenRaw)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 					Status:  http.StatusBadRequest,
