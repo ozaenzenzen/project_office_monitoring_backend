@@ -339,34 +339,36 @@ func GetUserData(c *gin.Context) {
 
 func EditProfile(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
-	headertoken := c.Request.Header.Get("token")
-	if headertoken == "" {
-		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+
+	header_platformkey := c.Request.Header.Get("platformkey")
+	if header_platformkey == "" {
+		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
 			Status:  http.StatusBadRequest,
-			Message: "token empty",
+			Message: "invalid credential",
+			Data:    nil,
 		})
 		return
 	}
-	isValid, err := helper.VerifyToken(headertoken)
+
+	isValidPlatformKey, err := helper.VerifyPlatformToken(header_platformkey)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+		c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
 			Status:  http.StatusBadRequest,
 			Message: err.Error(),
 		})
 		return
 	}
 
-	if isValid {
-		var editProfileRequest req.EditProfileRequestModel
-		if err := c.ShouldBindJSON(&editProfileRequest); err != nil {
+	if isValidPlatformKey {
+		headertoken := c.Request.Header.Get("token")
+		if headertoken == "" {
 			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 				Status:  http.StatusBadRequest,
-				Message: err.Error(),
+				Message: "token empty",
 			})
 			return
 		}
-		tokenRaw, err := helper.DecodeJWTToken(headertoken)
-		// fmt.Printf("\ntoken raw %v", tokenRaw)
+		isValid, err := helper.VerifyToken(headertoken)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 				Status:  http.StatusBadRequest,
@@ -375,59 +377,106 @@ func EditProfile(c *gin.Context) {
 			return
 		}
 
-		ids := tokenRaw["uid"].(string)
+		if isValid {
+			var editProfileRequest req.EditProfileRequestModel
+			if err := c.ShouldBindJSON(&editProfileRequest); err != nil {
+				c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+					Status:  http.StatusBadRequest,
+					Message: err.Error(),
+				})
+				return
+			}
 
-		//--------check id--------check id--------check id--------
+			validate := validator.New()
+			if err := validate.Struct(editProfileRequest); err != nil {
+				// log.Println(fmt.Sprintf("error log2: %s", err))
+				c.JSON(http.StatusBadRequest, resp.AccountSignUpResponseModel{
+					Status:  http.StatusBadRequest,
+					Message: "Data tidak lengkap",
+					Data:    nil,
+				})
+				return
+			}
+			// if editProfileRequest.Name == "" || editProfileRequest.ProfilePicture == "" {
+			// if editProfileRequest.Name == "" {
+			// if editProfileRequest == nil {
+			// 	c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+			// 		Status:  http.StatusBadRequest,
+			// 		Message: err.Error(),
+			// 	})
+			// 	return
+			// }
 
-		iduint64, err := strconv.ParseUint(ids, 10, 32)
+			tokenRaw, err := helper.DecodeJWTToken(headertoken)
+			// fmt.Printf("\ntoken raw %v", tokenRaw)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+					Status:  http.StatusBadRequest,
+					Message: err.Error(),
+				})
+				return
+			}
 
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, resp.EditProfileResponseModel{
-				Status:  500,
-				Message: "error parsing",
+			ids := tokenRaw["uid"].(string)
+
+			//--------check id--------check id--------check id--------
+
+			iduint64, err := strconv.ParseUint(ids, 10, 32)
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, resp.EditProfileResponseModel{
+					Status:  500,
+					Message: "error parsing",
+				})
+				return
+			}
+			iduint := uint(iduint64)
+
+			checkID := db.Table("account_user_models").Where("id = ?", ids).Find(&account.AccountUserModel{
+				ID: iduint,
+			})
+
+			if checkID.Error != nil {
+				c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+					Status:  http.StatusBadRequest,
+					Message: checkID.Error.Error(),
+				})
+				return
+			}
+
+			//--------check id--------check id--------check id--------
+
+			if db.Error != nil {
+				c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+					Status:  http.StatusBadRequest,
+					Message: db.Error.Error(),
+				})
+				return
+			}
+			// result := db.Create(&vehicleDataOutput)
+			result := db.Table("account_user_models").Where("id = ?", ids).Update(&editProfileRequest)
+
+			if result.Error != nil {
+				c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
+					Status:  http.StatusBadRequest,
+					Message: result.Error.Error(),
+				})
+				return
+			}
+
+			c.JSON(http.StatusOK, resp.EditProfileResponseModel{
+				Status:  http.StatusAccepted,
+				Message: "Edit profile success",
 			})
 			return
-		}
-		iduint := uint(iduint64)
 
-		checkID := db.Table("account_user_models").Where("id = ?", ids).Find(&account.AccountUserModel{
-			ID: iduint,
-		})
-
-		if checkID.Error != nil {
+		} else {
 			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 				Status:  http.StatusBadRequest,
-				Message: checkID.Error.Error(),
+				Message: "invalid token",
 			})
 			return
 		}
-
-		//--------check id--------check id--------check id--------
-
-		if db.Error != nil {
-			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
-				Status:  http.StatusBadRequest,
-				Message: db.Error.Error(),
-			})
-			return
-		}
-		// result := db.Create(&vehicleDataOutput)
-		result := db.Table("account_user_models").Where("id = ?", ids).Update(&editProfileRequest)
-
-		if result.Error != nil {
-			c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
-				Status:  http.StatusBadRequest,
-				Message: result.Error.Error(),
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, resp.EditProfileResponseModel{
-			Status:  http.StatusAccepted,
-			Message: "Edit profile success",
-		})
-		return
-
 	} else {
 		c.JSON(http.StatusBadRequest, resp.EditProfileResponseModel{
 			Status:  http.StatusBadRequest,
@@ -435,4 +484,5 @@ func EditProfile(c *gin.Context) {
 		})
 		return
 	}
+
 }
