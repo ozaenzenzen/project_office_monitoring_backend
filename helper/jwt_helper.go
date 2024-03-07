@@ -11,6 +11,7 @@ import (
 )
 
 var key string = "ozaenzenzen"
+var key_platform string = "ozaenzenzen_plat"
 
 func GeneratePlatformToken(uid string, email string, expiresTime int64) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -20,7 +21,7 @@ func GeneratePlatformToken(uid string, email string, expiresTime int64) (string,
 		"exp": expiresTime,
 	})
 
-	tokenString, err := token.SignedString([]byte(key))
+	tokenString, err := token.SignedString([]byte(key_platform))
 	if err != nil {
 		return "", err
 	}
@@ -36,7 +37,7 @@ func VerifyPlatformToken(tokenString string) (bool, error) {
 		}
 
 		// Provide the secret key used for signing the token
-		return []byte(key), nil
+		return []byte(key_platform), nil
 	})
 
 	if err != nil {
