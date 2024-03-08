@@ -24,6 +24,9 @@ func SetupRoutes(db *gorm.DB) *gin.Engine {
 	r.GET("/account/getuser", controllers.GetUserData)
 	r.POST("/platform/create", controllers.CreatePlatform)
 	r.POST("/platform/initialize", controllers.InitializePlatform)
+	r.POST("/monitor/getlistlocation", controllers.GetListLocation)
+	r.POST("/monitor/getlistlog", controllers.GetListLog)
+	r.POST("/monitor/capturelocation", controllers.CaptureLocation)
 
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, HandleRoutesResponse{

@@ -7,7 +7,8 @@ type GetUserDataResponseModel struct {
 }
 
 type GetUserDataModel struct {
-	ID             uint   `json:"id" gorm:"primary_key"`
+	// ID             uint   `json:"id" gorm:"primary_key"`
+	UserStamp      string `json:"user_stamp"`
 	Name           string `json:"name"`
 	Email          string `json:"email"`
 	NoReg          string `json:"noreg"`

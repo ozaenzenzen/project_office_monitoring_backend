@@ -2,9 +2,9 @@ package models
 
 import "time"
 
-type MonitorModel struct {
+type CompanyModel struct {
 	ID                  uint      `json:"id" gorm:"primary_key"`
-	UserStamp           string    `json:"user_stamp"`
+	UserNoReg           string    `json:"user_id"`
 	CompanyName         string    `json:"company_name"`
 	CompanyPlatformName string    `json:"company_platform_name"`
 	Picture             string    `json:"picture"`

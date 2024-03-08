@@ -13,10 +13,10 @@ import (
 var key string = "ozaenzenzen"
 var key_platform string = "ozaenzenzen_plat"
 
-func GeneratePlatformToken(uid string, email string, expiresTime int64) (string, error) {
+func GeneratePlatformToken(uid string, platform_secret string, expiresTime int64) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"uid":   uid,
-		"email": email,
+		"uid":             uid,
+		"platform_secret": platform_secret,
 		// "exp":   time.Now().Add(time.Hour * 168).Unix(), // Token expires in 168 hour or 1 week
 		"exp": expiresTime,
 	})
@@ -51,10 +51,23 @@ func VerifyPlatformToken(tokenString string) (bool, error) {
 	return false, nil
 }
 
-func GenerateJWTToken(uid string, email string) (string, error) {
+func DecodePlatformToken(tokenString string) (jwt.MapClaims, error) {
+	// return token.Raw, err
+	hmacSecret := []byte(key)
+	claims := jwt.MapClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return hmacSecret, nil
+	})
+	if err != nil {
+		return nil, nil
+	}
+	return token.Claims.(jwt.MapClaims), err
+}
+
+func GenerateJWTToken(uid string, userstamp string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"uid":   uid,
-		"email": email,
+		"uid":        uid,
+		"user_stamp": userstamp,
 		// "exp":   time.Now().Add(time.Hour * 168).Unix(), // Token expires in 168 hour or 1 week
 		"exp": time.Now().Add(time.Minute * 60).Unix(), // Token expires in 168 hour or 1 week
 	})

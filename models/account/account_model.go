@@ -8,6 +8,7 @@ type AccountUserModel struct {
 	ProfilePicture  string    `json:"profile_picture"`
 	Email           string    `json:"email"`
 	NoReg           string    `json:"noreg"`
+	UserStamp       string    `json:"user_stamp"`
 	Jabatan         string    `json:"jabatan"`
 	Phone           string    `json:"phone"`
 	Typeuser        uint      `json:"typeuser"`

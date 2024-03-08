@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator"
+	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 )
 
@@ -73,10 +74,14 @@ func SignUpAccount(c *gin.Context) {
 			return
 		}
 
+		stampToken := uuid.New().String()
+		userStamp := accountInput.Name + stampToken
+
 		accountResponsePayload := account.AccountUserModel{
 			Name:            accountInput.Name,
 			Email:           accountInput.Email,
 			NoReg:           accountInput.NoReg,
+			UserStamp:       userStamp,
 			Phone:           accountInput.Phone,
 			Password:        hashPw,
 			ConfirmPassword: hashCpw,
@@ -179,7 +184,7 @@ func SignInAccount(c *gin.Context) {
 			return
 		}
 
-		tokenString, err := helper.GenerateJWTToken(strconv.FormatUint(uint64(table.ID), 10), dataUser.Email)
+		tokenString, err := helper.GenerateJWTToken(strconv.FormatUint(uint64(table.ID), 10), table.UserStamp)
 
 		if err != nil {
 			c.JSON(http.StatusNotFound, resp.AccountSignInResponseModel{
@@ -271,10 +276,10 @@ func GetUserData(c *gin.Context) {
 				return
 			}
 
-			emails := tokenRaw["email"].(string)
+			userStamp := tokenRaw["user_stamp"].(string)
 
 			// if err := db.Where("id = ?", c.Param("id")).First(&userData).Error; err != nil {
-			if err := db.Where("email = ?", emails).First(&userData).Error; err != nil {
+			if err := db.Where("user_stamp = ?", userStamp).First(&userData).Error; err != nil {
 				c.JSON(http.StatusBadRequest, resp.GetUserDataResponseModel{
 					Status:  http.StatusBadRequest,
 					Message: "User Data Not Found",
@@ -287,7 +292,7 @@ func GetUserData(c *gin.Context) {
 				Status:  200,
 				Message: "get user data success",
 				Data: &resp.GetUserDataModel{
-					ID:             userData.ID,
+					UserStamp:      userData.UserStamp,
 					Name:           userData.Name,
 					Email:          userData.Email,
 					NoReg:          userData.NoReg,
