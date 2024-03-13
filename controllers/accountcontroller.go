@@ -112,12 +112,12 @@ func SignUpAccount(c *gin.Context) {
 			Status:  http.StatusCreated,
 			Message: "Account created successfully",
 			Data: &resp.AccountUserDataSignUpModel{
-				ID:      accountResponsePayload.ID,
-				Name:    accountInput.Name,
-				Email:   accountInput.Email,
-				NoReg:   accountResponsePayload.NoReg,
-				Jabatan: accountResponsePayload.Jabatan,
-				Phone:   accountInput.Phone,
+				UserStamp: accountResponsePayload.UserStamp,
+				Name:      accountInput.Name,
+				Email:     accountInput.Email,
+				NoReg:     accountResponsePayload.NoReg,
+				Jabatan:   accountResponsePayload.Jabatan,
+				Phone:     accountInput.Phone,
 			},
 		})
 	} else {
@@ -199,14 +199,14 @@ func SignInAccount(c *gin.Context) {
 			Status:  200,
 			Message: "Account SignIn Successfully",
 			Data: &resp.AccountUserDataSignInModel{
-				ID:       table.ID,
-				Name:     table.Name,
-				Email:    dataUser.Email,
-				NoReg:    table.NoReg,
-				Jabatan:  table.Jabatan,
-				Phone:    table.Phone,
-				Typeuser: table.Typeuser,
-				Token:    tokenString,
+				UserStamp: table.UserStamp,
+				Name:      table.Name,
+				Email:     dataUser.Email,
+				NoReg:     table.NoReg,
+				Jabatan:   table.Jabatan,
+				Phone:     table.Phone,
+				Typeuser:  table.Typeuser,
+				Token:     tokenString,
 			},
 		})
 	} else {
@@ -298,6 +298,7 @@ func GetUserData(c *gin.Context) {
 					NoReg:          userData.NoReg,
 					Jabatan:        userData.Jabatan,
 					Phone:          userData.Phone,
+					Typeuser:       userData.Typeuser,
 					ProfilePicture: userData.ProfilePicture,
 				},
 			})

@@ -14,5 +14,6 @@ type GetUserDataModel struct {
 	NoReg          string `json:"noreg"`
 	Jabatan        string `json:"jabatan"`
 	Phone          string `json:"phone"`
+	Typeuser       uint   `json:"typeuser"`
 	ProfilePicture string `json:"profile_picture"`
 }
