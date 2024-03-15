@@ -49,8 +49,8 @@ func CreatePlatform(c *gin.Context) {
 	stampTokenPN := uuid.New().String()
 	stampTokenPS := uuid.New().String()
 
-	platformName := reqCreatePlatform.CompanyName + stampTokenPN
-	platformSecret := reqCreatePlatform.CompanyName + reqCreatePlatform.CompanyEmail + stampTokenPS
+	platformName := reqCreatePlatform.Name + stampTokenPN
+	platformSecret := reqCreatePlatform.Name + reqCreatePlatform.Email + stampTokenPS
 
 	hashPw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.Password)), 10)
 	hashCpw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.ConfirmPassword)), 10)

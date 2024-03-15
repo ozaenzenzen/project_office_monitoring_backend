@@ -17,7 +17,7 @@ type CompanyModel struct {
 	Information     string    `json:"information"`
 	Password        string    `json:"password"`
 	ConfirmPassword string    `json:"confirm_password"`
-	CompanyTypeuser string    `json:"company_typeuser"`
+	CompanyTypeuser uint      `json:"company_typeuser"`
 	PlatformName    string    `json:"platform_name"`
 	CreatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt       time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
