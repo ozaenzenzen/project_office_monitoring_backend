@@ -23,6 +23,7 @@ func SetupRoutes(db *gorm.DB) *gin.Engine {
 	r.POST("/account/editprofile", controllers.EditProfile)
 	r.GET("/account/getuser", controllers.GetUserData)
 	r.POST("/platform/create", controllers.CreatePlatform)
+	r.POST("/platform/getplatformdata", controllers.GetPlatformData)
 	r.POST("/platform/initialize", controllers.InitializePlatform)
 	r.POST("/monitor/getlistlocation", controllers.GetListLocation)
 	r.POST("/monitor/getlistlog", controllers.GetListLog)

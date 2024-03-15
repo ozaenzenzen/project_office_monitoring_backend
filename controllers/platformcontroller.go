@@ -27,7 +27,6 @@ func CreatePlatform(c *gin.Context) {
 	}
 
 	validate := validator.New()
-
 	if err := validate.Struct(reqCreatePlatform); err != nil {
 		c.JSON(http.StatusBadRequest, resp.CreatePlatformResponseModel{
 			Status:  http.StatusBadRequest,
@@ -35,27 +34,6 @@ func CreatePlatform(c *gin.Context) {
 			Data:    nil,
 		})
 		return
-	}
-
-	stampToken := uuid.New().String()
-	stampTokenPN := uuid.New().String()
-	stampTokenPS := uuid.New().String()
-
-	platformName := reqCreatePlatform.CompanyName + stampTokenPN
-	platformSecret := reqCreatePlatform.CompanyName + reqCreatePlatform.CompanyEmail + stampTokenPS
-
-	hashPw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.Password)), 10)
-	hashCpw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.ConfirmPassword)), 10)
-
-	dataHandler := platform.PlatformModel{
-		CompanyName:     reqCreatePlatform.CompanyName,
-		CompanyEmail:    reqCreatePlatform.CompanyEmail,
-		CompanyNoReg:    stampToken,
-		CompanyPhone:    reqCreatePlatform.CompanyPhone,
-		Password:        hashPw,
-		ConfirmPassword: hashCpw,
-		PlatformName:    platformName,
-		PlatformSecret:  platformSecret,
 	}
 
 	db := c.MustGet("db").(*gorm.DB)
@@ -68,7 +46,26 @@ func CreatePlatform(c *gin.Context) {
 		return
 	}
 
-	result := db.FirstOrCreate(&dataHandler, platform.PlatformModel{CompanyNoReg: stampToken})
+	stampTokenPN := uuid.New().String()
+	stampTokenPS := uuid.New().String()
+
+	platformName := reqCreatePlatform.CompanyName + stampTokenPN
+	platformSecret := reqCreatePlatform.CompanyName + reqCreatePlatform.CompanyEmail + stampTokenPS
+
+	hashPw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.Password)), 10)
+	hashCpw := strconv.FormatUint(uint64(helper.Hash(reqCreatePlatform.ConfirmPassword)), 10)
+
+	dataHandler := platform.PlatformModel{
+		PlatformName:    platformName,
+		PlatformSecret:  platformSecret,
+		Password:        hashPw,
+		ConfirmPassword: hashCpw,
+		PlatformType:    "basic",
+		MaxCompany:      1,
+		MaxUser:         50,
+	}
+
+	result := db.FirstOrCreate(&dataHandler, platform.PlatformModel{PlatformName: platformName})
 
 	if result.Value == nil && result.RowsAffected == 0 {
 		c.JSON(http.StatusBadRequest, resp.CreatePlatformResponseModel{
@@ -83,19 +80,61 @@ func CreatePlatform(c *gin.Context) {
 		Status:  http.StatusCreated,
 		Message: "Platform created successfully",
 		Data: &resp.CreatePlatformDataModel{
-			CompanyName:    dataHandler.CompanyName,
-			CompanyEmail:   dataHandler.CompanyEmail,
-			CompanyNoReg:   dataHandler.CompanyNoReg,
-			CompanyPhone:   dataHandler.CompanyPhone,
 			PlatformName:   dataHandler.PlatformName,
 			PlatformSecret: dataHandler.PlatformSecret,
+			PlatformType:   dataHandler.PlatformType,
+			MaxCompany:     dataHandler.MaxCompany,
+			MaxUser:        dataHandler.MaxUser,
+		},
+	})
+}
+
+func GetPlatformData(c *gin.Context) {
+	var reqGetPlatformData req.GetPlatformDataRequestModel
+	if err := c.ShouldBindJSON(&reqGetPlatformData); err != nil {
+		c.JSON(http.StatusBadRequest, resp.InitializePlatformResponseModel{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
+			Data:    nil,
+		})
+		return
+	}
+
+	var tablePlatform platform.PlatformModel
+	db := c.MustGet("db").(*gorm.DB)
+	if err := db.Where("platform_name = ?", reqGetPlatformData.PlatformName).First(&tablePlatform).Error; err != nil {
+		c.JSON(http.StatusBadRequest, resp.GetPlatformDataResponseModel{
+			Status:  http.StatusBadRequest,
+			Message: "User Data Not Found",
+			Data:    nil,
+		})
+		return
+	}
+
+	checkHashPw := helper.CheckPasswordHash(reqGetPlatformData.Password, tablePlatform.Password)
+	if !checkHashPw {
+		c.JSON(http.StatusUnauthorized, resp.GetPlatformDataResponseModel{
+			Status:  http.StatusUnauthorized,
+			Message: "Invalid user email or password",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp.GetPlatformDataResponseModel{
+		Status:  200,
+		Message: "Get Data Success",
+		Data: &resp.GetPlatformDataModel{
+			PlatformName:   tablePlatform.PlatformName,
+			PlatformSecret: tablePlatform.PlatformSecret,
+			PlatformType:   tablePlatform.PlatformType,
+			MaxCompany:     tablePlatform.MaxCompany,
+			MaxUser:        tablePlatform.MaxUser,
 		},
 	})
 }
 
 func InitializePlatform(c *gin.Context) {
 	var reqInitPlatform req.InitializePlatformRequestModel
-
 	if err := c.ShouldBindJSON(&reqInitPlatform); err != nil {
 		c.JSON(http.StatusBadRequest, resp.InitializePlatformResponseModel{
 			Status:  http.StatusBadRequest,
@@ -106,6 +145,7 @@ func InitializePlatform(c *gin.Context) {
 	}
 
 	var table platform.PlatformModel
+
 	db := c.MustGet("db").(*gorm.DB)
 
 	result := db.Where("platform_name = ?", reqInitPlatform.PlatformName).Where("platform_secret = ?", reqInitPlatform.PlatformSecret).First(&table)
@@ -119,7 +159,6 @@ func InitializePlatform(c *gin.Context) {
 	}
 
 	platformKey, err := helper.GeneratePlatformToken(strconv.FormatUint(uint64(table.ID), 10), reqInitPlatform.PlatformSecret, time.Now().Add(time.Minute*30).Unix())
-
 	if err != nil {
 		c.JSON(http.StatusNotFound, resp.InitializePlatformResponseModel{
 			Status:  http.StatusInternalServerError,

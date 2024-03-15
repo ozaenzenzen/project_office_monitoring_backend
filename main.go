@@ -14,7 +14,7 @@ func main() {
 
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)
-	db.AutoMigrate(&account.AccountUserModel{}, &platform.PlatformModel{}, &monitor.MonitorModel{})
+	db.AutoMigrate(&account.AccountUserModel{}, &platform.PlatformModel{}, &monitor.MonitorModel{}, &monitor.CompanyModel{})
 
 	r := routes.SetupRoutes(db)
 	err := r.Run(":8080")
